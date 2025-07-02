@@ -5,7 +5,7 @@ const BOARD_SIZE: usize = 15;
 const WIN_LENGTH: usize = 5;
 const MAX_DEPTH: i32 = 3; // Limit depth for performance
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum Cell {
     Empty,
     Black,
@@ -305,5 +305,68 @@ fn main() {
             break;
         }
         game.switch_player();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_board_is_empty() {
+        let game = Gomoku::new();
+        for row in 0..BOARD_SIZE {
+            for col in 0..BOARD_SIZE {
+                assert_eq!(game.board[row][col], Cell::Empty);
+            }
+        }
+        assert_eq!(game.current_player, Cell::Black);
+    }
+
+    #[test]
+    fn make_move_and_switch_player() {
+        let mut game = Gomoku::new();
+        game.make_move(0, 0).unwrap();
+        assert_eq!(game.board[0][0], Cell::Black);
+        game.switch_player();
+        assert_eq!(game.current_player, Cell::White);
+    }
+
+    #[test]
+    fn invalid_move_out_of_bounds() {
+        let mut game = Gomoku::new();
+        assert!(game.make_move(BOARD_SIZE, BOARD_SIZE).is_err());
+    }
+
+    #[test]
+    fn detect_horizontal_win() {
+        let mut game = Gomoku::new();
+        for col in 0..WIN_LENGTH {
+            game.make_move(0, col).unwrap();
+        }
+        assert_eq!(game.check_winner(), Some(Cell::Black));
+    }
+
+    #[test]
+    fn detect_diagonal_win() {
+        let mut game = Gomoku::new();
+        for i in 0..WIN_LENGTH {
+            game.make_move(i, i).unwrap();
+        }
+        assert_eq!(game.check_winner(), Some(Cell::Black));
+    }
+
+    #[test]
+    fn board_full_detection() {
+        let mut game = Gomoku::new();
+        for row in 0..BOARD_SIZE {
+            for col in 0..BOARD_SIZE {
+                game.make_move(row, col).unwrap();
+                if row != BOARD_SIZE - 1 || col != BOARD_SIZE - 1 {
+                    game.switch_player();
+                }
+            }
+        }
+        assert!(game.is_board_full());
     }
 }
