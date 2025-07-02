@@ -1,6 +1,6 @@
 # Gomoku Game in Rust
 
-This is a console-based Gomoku game implemented in Rust. Gomoku is a two-player strategy game on a 15x15 grid where players alternate placing stones to form five in a row (horizontally, vertically, or diagonally). The game pits a human player (Black, X) against an AI opponent (White, O) powered by the Minimax algorithm with alpha-beta pruning.
+This repository contains a simple console implementation of the Gomoku board game in Rust along with a lightweight WebGL interface for playing in the browser.
 
 ## Features
 
@@ -9,6 +9,7 @@ This is a console-based Gomoku game implemented in Rust. Gomoku is a two-player 
 - **Minimax AI**: AI uses Minimax with alpha-beta pruning (depth 3) for strategic moves.
 - **Win/Draw Detection**: Detects wins (five in a row) or draws (full board).
 - **Input Validation**: Ensures valid moves with error messages for invalid inputs.
+- **WebGL UI**: Play directly in the browser using the files in the `web` folder. All game logic runs in Rust and is compiled to WebAssembly.
 
 ## Prerequisites
 
@@ -21,3 +22,19 @@ This is a console-based Gomoku game implemented in Rust. Gomoku is a two-player 
    ```bash
    git clone https://github.com/<your-username>/gomoku.git
    cd gomoku
+   ```
+2. Run the console version:
+   ```bash
+   cargo run
+   ```
+3. Build the WebGL interface using [wasm-pack](https://rustwasm.github.io/wasm-pack/):
+   ```bash
+   wasm-pack build --target web
+   ```
+   This compiles the Rust game logic to WebAssembly and writes bindings in the `pkg/` directory.
+4. Serve the `web/` folder with any static file server, e.g. on Linux:
+   ```bash
+   cd web
+   python3 -m http.server 8000
+   ```
+   Then open `http://localhost:8000` in your browser to play.
