@@ -13,6 +13,12 @@ if (!gl) {
 
 let game;
 let gameOver = false;
+let recentMoves = [];
+let animRequestId = null;
+let lastMove = null;
+
+const FADE_DURATION = 1000; // ms
+const HIGHLIGHT_DURATION = 2000; // ms
 
 function endGame(msg) {
     messageDiv.textContent = msg;
@@ -94,7 +100,7 @@ function circleVertices(x, y, radius) {
     return verts;
 }
 
-function drawStone(row, col, player) {
+function drawStone(row, col, player, alpha = 1.0) {
     const [x, y] = ndcFromBoard(row, col);
     const verts = circleVertices(x, y, (2 * BOARD_SCALE / BOARD_SIZE) * 0.4);
     const buffer = gl.createBuffer();
@@ -102,12 +108,35 @@ function drawStone(row, col, player) {
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
     gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
     if (player === 1) {
-        gl.uniform4f(colorUniform, 0.0, 0.0, 0.0, 1.0);
+        gl.uniform4f(colorUniform, 0.0, 0.0, 0.0, alpha);
     } else {
-        gl.uniform4f(colorUniform, 1.0, 1.0, 1.0, 1.0);
+        gl.uniform4f(colorUniform, 1.0, 1.0, 1.0, alpha);
     }
     gl.drawArrays(gl.TRIANGLE_FAN, 0, verts.length / 2);
 }
+
+function drawHighlight(row, col, player, alpha) {
+    const [x, y] = ndcFromBoard(row, col);
+    const radius = (2 * BOARD_SCALE / BOARD_SIZE) * 0.48;
+    const segments = 40;
+    const verts = [];
+    for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        verts.push(x + radius * Math.cos(angle));
+        verts.push(y + radius * Math.sin(angle));
+    }
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0);
+    if (player === 1) {
+        gl.uniform4f(colorUniform, 0.0, 0.0, 0.0, alpha);
+    } else {
+        gl.uniform4f(colorUniform, 1.0, 1.0, 1.0, alpha);
+    }
+    gl.drawArrays(gl.LINE_STRIP, 0, verts.length / 2);
+}
+
 
 function boardMatrix() {
     const data = game.board();
@@ -126,12 +155,44 @@ function render() {
     gl.clear(gl.COLOR_BUFFER_BIT);
     drawGrid();
     const b = boardMatrix();
+    const now = performance.now();
+    let needAnim = false;
+    const newRecent = [];
     for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
-            if (b[r][c] !== 0) {
-                drawStone(r, c, b[r][c]);
+            const cell = b[r][c];
+            if (cell === 0) continue;
+            const anim = recentMoves.find(m => m.row === r && m.col === c);
+            if (anim) {
+                const elapsed = now - anim.time;
+                const alpha = Math.min(elapsed / FADE_DURATION, 1.0);
+                if (elapsed < FADE_DURATION) {
+                    needAnim = true;
+                    newRecent.push(anim);
+                }
+                drawStone(r, c, cell, alpha);
+            } else {
+                drawStone(r, c, cell, 1.0);
             }
         }
+    }
+
+    if (lastMove) {
+        const elapsed = now - lastMove.time;
+        if (elapsed < HIGHLIGHT_DURATION) {
+            const alpha = 0.5 + 0.5 * Math.sin((elapsed / 150) * Math.PI);
+            drawHighlight(lastMove.row, lastMove.col, lastMove.player, alpha);
+            needAnim = true;
+        } else {
+            lastMove = null;
+        }
+    }
+    recentMoves = newRecent;
+    if (needAnim) {
+        animRequestId = requestAnimationFrame(render);
+    } else if (animRequestId) {
+        cancelAnimationFrame(animRequestId);
+        animRequestId = null;
     }
 }
 
@@ -140,6 +201,12 @@ function startGame() {
     gameOver = false;
     messageDiv.textContent = '';
     startButton.disabled = true; // disable startButton when game is started.
+    recentMoves = [];
+    lastMove = null;
+    if (animRequestId) {
+        cancelAnimationFrame(animRequestId);
+        animRequestId = null;
+    }
     render();
 }
 
@@ -151,6 +218,9 @@ canvas.addEventListener('click', (e) => {
     const col = Math.floor(x / (canvas.width / BOARD_SIZE));
     const row = Math.floor(y / (canvas.height / BOARD_SIZE));
     if (!game.make_move(row, col)) return;
+    const now = performance.now();
+    recentMoves.push({ row, col, player: 1, time: now });
+    lastMove = { row, col, player: 1, time: now };
     render();
     let winner = game.check_winner();
     if (winner === 1 || game.is_board_full()) { // combine this 'if' and following 'if' into one. because both contents of 'if' are similiar.
@@ -160,6 +230,9 @@ canvas.addEventListener('click', (e) => {
     game.switch_player();
     const aiMove = game.ai_move();
     game.make_move(aiMove[0], aiMove[1]);
+    const aiNow = performance.now();
+    recentMoves.push({ row: aiMove[0], col: aiMove[1], player: 2, time: aiNow });
+    lastMove = { row: aiMove[0], col: aiMove[1], player: 2, time: aiNow };
     render();
     winner = game.check_winner();
     if (winner === 2 || game.is_board_full()) { // combine this 'if' and following 'if' into one. because both contents of 'if' are similiar.
