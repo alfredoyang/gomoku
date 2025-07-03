@@ -1,6 +1,10 @@
 use gomoku::{Gomoku, Cell, BOARD_SIZE};
 use std::io;
 
+/// Entry point for the console version of the game.
+///
+/// Handles the game loop, user input and AI moves while printing the
+/// board after each turn.
 fn main() {
     let mut game = Gomoku::new();
     println!("Welcome to Gomoku! You are Black (X), AI is White (O).");

@@ -11,6 +11,10 @@ const MAX_DEPTH: i32 = 3; // Limit depth for performance
 
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen]
+/// Return the board size constant for the WebAssembly bindings.
+///
+/// This helper exposes the compile-time board dimension so the
+/// JavaScript side can allocate buffers of the correct length.
 pub fn board_size() -> usize {
     BOARD_SIZE
 }
@@ -29,6 +33,7 @@ pub struct Gomoku {
 }
 
 impl Gomoku {
+    /// Create a new game with an empty board and the Black player to move.
     pub fn new() -> Self {
         Gomoku {
             board: [[Cell::Empty; BOARD_SIZE]; BOARD_SIZE],
@@ -36,6 +41,11 @@ impl Gomoku {
         }
     }
 
+    /// Display the board state to the console using ASCII characters.
+    ///
+    /// Empty cells are shown with `.` while black and white stones are
+    /// displayed as `X` and `O` respectively. The method also prints row
+    /// and column indices for easier interaction in the console version.
     pub fn print_board(&self) {
         print!("  ");
         for i in 0..BOARD_SIZE {
@@ -57,6 +67,11 @@ impl Gomoku {
         println!();
     }
 
+    /// Place a stone for the current player.
+    ///
+    /// Returns an error if the coordinates are outside the board or the
+    /// cell is already occupied. On success the stone is placed but the
+    /// player is not automatically switched.
     pub fn make_move(&mut self, row: usize, col: usize) -> Result<(), &'static str> {
         if row >= BOARD_SIZE || col >= BOARD_SIZE {
             return Err("Move out of bounds");
@@ -68,6 +83,7 @@ impl Gomoku {
         Ok(())
     }
 
+    /// Toggle the current player between Black and White.
     pub fn switch_player(&mut self) {
         self.current_player = match self.current_player {
             Cell::Black => Cell::White,
@@ -76,10 +92,16 @@ impl Gomoku {
         };
     }
 
+    /// Get the player whose turn it is to move.
     pub fn current_player(&self) -> Cell {
         self.current_player
     }
 
+    /// Determine if either player has achieved five in a row.
+    ///
+    /// The method scans the board in all four directions starting from each
+    /// occupied cell. If a sequence of `WIN_LENGTH` stones belonging to the
+    /// same player is found, that player is returned.
     pub fn check_winner(&self) -> Option<Cell> {
         let directions = [
             (0, 1),  // horizontal
@@ -121,12 +143,14 @@ impl Gomoku {
         None
     }
 
+    /// Check if there are no empty cells remaining on the board.
     pub fn is_board_full(&self) -> bool {
         self.board
             .iter()
             .all(|row| row.iter().all(|&cell| cell != Cell::Empty))
     }
 
+    /// Collect all empty board positions.
     fn get_valid_moves(&self) -> Vec<(usize, usize)> {
         let mut moves = Vec::new();
         for row in 0..BOARD_SIZE {
@@ -139,6 +163,11 @@ impl Gomoku {
         moves
     }
 
+    /// Heuristic evaluation of the board from White's perspective.
+    ///
+    /// Positive scores favor White while negative scores favor Black.
+    /// The function looks for runs of stones with open ends and assigns
+    /// increasingly large scores as sequences grow longer.
     fn evaluate(&self) -> i32 {
         let mut score = 0;
         let directions = [(0, 1), (1, 0), (1, 1), (1, -1)];
@@ -204,6 +233,12 @@ impl Gomoku {
         score
     }
 
+    /// Minimax search with alpha-beta pruning.
+    ///
+    /// * `depth` limits the recursive search depth.
+    /// * `alpha` and `beta` are the current bounds for pruning.
+    /// * `maximizing` indicates whether the AI (White) or the opponent
+    ///   (Black) is to play.
     fn minimax(
         &self,
         depth: i32,
@@ -259,6 +294,11 @@ impl Gomoku {
         }
     }
 
+    /// Choose an optimal move for the AI using minimax.
+    ///
+    /// Returns the board coordinates of the best move. If no move is
+    /// found (which should not happen in normal play) the center of the
+    /// board is returned as a fallback.
     pub fn ai_move(&mut self) -> (usize, usize) {
         let (_, best_move) = self.minimax(MAX_DEPTH, i32::MIN, i32::MAX, true);
         best_move.unwrap_or((7, 7)) // Default to center if no move found
@@ -275,10 +315,12 @@ pub struct WasmGomoku {
 #[wasm_bindgen]
 impl WasmGomoku {
     #[wasm_bindgen(constructor)]
+    /// Create a new `WasmGomoku` wrapping the core game logic.
     pub fn new() -> WasmGomoku {
         WasmGomoku { inner: Gomoku::new() }
     }
 
+    /// Flatten the internal board to a simple array for JavaScript.
     pub fn board(&self) -> Vec<u8> {
         self.inner
             .board
@@ -292,6 +334,7 @@ impl WasmGomoku {
             .collect()
     }
 
+    /// Return the active player as a numeric value used by the JS side.
     pub fn current_player(&self) -> u8 {
         match self.inner.current_player {
             Cell::Black => 1,
@@ -300,10 +343,12 @@ impl WasmGomoku {
         }
     }
 
+    /// Wrapper around [`Gomoku::make_move`] that exposes a boolean result.
     pub fn make_move(&mut self, row: usize, col: usize) -> bool {
         self.inner.make_move(row, col).is_ok()
     }
 
+    /// Compute the AI's move and return it as a two-element JS array.
     pub fn ai_move(&mut self) -> js_sys::Array {
         let (r, c) = self.inner.ai_move();
         let arr = js_sys::Array::new();
@@ -312,6 +357,7 @@ impl WasmGomoku {
         arr
     }
 
+    /// Translate the winner check into a numeric value for JavaScript.
     pub fn check_winner(&self) -> u8 {
         match self.inner.check_winner() {
             Some(Cell::Black) => 1,
@@ -320,10 +366,12 @@ impl WasmGomoku {
         }
     }
 
+    /// Expose whether the board is completely filled.
     pub fn is_board_full(&self) -> bool {
         self.inner.is_board_full()
     }
 
+    /// Switch the active player.
     pub fn switch_player(&mut self) {
         self.inner.switch_player();
     }
@@ -336,6 +384,8 @@ mod tests {
     use super::*;
 
     #[test]
+    /// Ensure a newly created board contains only empty cells and that
+    /// the starting player is Black.
     fn new_board_is_empty() {
         let game = Gomoku::new();
         for row in 0..BOARD_SIZE {
@@ -347,6 +397,8 @@ mod tests {
     }
 
     #[test]
+    /// Verify that placing a stone succeeds and that `switch_player`
+    /// correctly toggles the active color.
     fn make_move_and_switch_player() {
         let mut game = Gomoku::new();
         game.make_move(0, 0).unwrap();
@@ -356,12 +408,14 @@ mod tests {
     }
 
     #[test]
+    /// Attempt to play outside the board bounds should return an error.
     fn invalid_move_out_of_bounds() {
         let mut game = Gomoku::new();
         assert!(game.make_move(BOARD_SIZE, BOARD_SIZE).is_err());
     }
 
     #[test]
+    /// Confirm horizontal sequences are detected as wins.
     fn detect_horizontal_win() {
         let mut game = Gomoku::new();
         for col in 0..WIN_LENGTH {
@@ -371,6 +425,7 @@ mod tests {
     }
 
     #[test]
+    /// Confirm diagonal sequences are detected as wins.
     fn detect_diagonal_win() {
         let mut game = Gomoku::new();
         for i in 0..WIN_LENGTH {
@@ -380,6 +435,7 @@ mod tests {
     }
 
     #[test]
+    /// Fill the board to verify draw detection when no moves remain.
     fn board_full_detection() {
         let mut game = Gomoku::new();
         for row in 0..BOARD_SIZE {

@@ -22,6 +22,7 @@ let lastMove = null;
 const FADE_DURATION = 1000; // ms
 const HIGHLIGHT_DURATION = 2000; // ms
 
+// Display a message and reset state when the game finishes.
 function endGame(msg) {
     messageDiv.textContent = msg;
     gameOver = true;
@@ -65,12 +66,14 @@ gl.enableVertexAttribArray(coord);
 const BOARD_SCALE = 0.95; // keep some margin around the board so stones at
                          // the edge aren't clipped
 
+// Convert board coordinates to normalized device coordinates used by WebGL.
 function ndcFromBoard(row, col) {
     const x = -BOARD_SCALE + (col / (BOARD_SIZE - 1)) * 2 * BOARD_SCALE;
     const y = BOARD_SCALE - (row / (BOARD_SIZE - 1)) * 2 * BOARD_SCALE;
     return [x, y];
 }
 
+// Render the board grid lines.
 function drawGrid() {
     const vertices = [];
     for (let i = 0; i < BOARD_SIZE; i++) {
@@ -90,6 +93,7 @@ function drawGrid() {
     gl.drawArrays(gl.LINES, 0, vertices.length / 2);
 }
 
+// Generate vertices for a circle centered at (x, y) with the given radius.
 function circleVertices(x, y, radius) {
     const segments = 40;
     const verts = [];
@@ -102,6 +106,8 @@ function circleVertices(x, y, radius) {
     return verts;
 }
 
+// Draw a stone for the specified player at board position (row, col).
+// `alpha` controls transparency for fade-in animations.
 function drawStone(row, col, player, alpha = 1.0) {
     const [x, y] = ndcFromBoard(row, col);
     const verts = circleVertices(x, y, (2 * BOARD_SCALE / BOARD_SIZE) * 0.4);
@@ -117,6 +123,7 @@ function drawStone(row, col, player, alpha = 1.0) {
     gl.drawArrays(gl.TRIANGLE_FAN, 0, verts.length / 2);
 }
 
+// Outline the most recent move with a pulsing highlight.
 function drawHighlight(row, col, player, alpha) {
     const [x, y] = ndcFromBoard(row, col);
     const radius = (2 * BOARD_SCALE / BOARD_SIZE) * 0.48;
@@ -140,6 +147,7 @@ function drawHighlight(row, col, player, alpha) {
 }
 
 
+// Convert the flat board array from WebAssembly into a 2D matrix.
 function boardMatrix() {
     const data = game.board();
     const board = [];
@@ -152,6 +160,7 @@ function boardMatrix() {
     return board;
 }
 
+// Draw the current board state and animate recent moves.
 function render() {
     gl.clearColor(0.95, 0.92, 0.8, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -198,6 +207,7 @@ function render() {
     }
 }
 
+// Initialise a new game and optionally let the AI play first.
 function startGame() {
     game = new WasmGomoku();
     gameOver = false;
