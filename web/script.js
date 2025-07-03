@@ -5,6 +5,8 @@ let BOARD_SIZE;
 const canvas = document.getElementById('board');
 const startButton = document.getElementById('startButton');
 const messageDiv = document.getElementById('message');
+const playerFirstRadio = document.getElementById('playerFirst');
+const aiFirstRadio = document.getElementById('aiFirst');
 
 const gl = canvas.getContext('webgl');
 if (!gl) {
@@ -208,6 +210,21 @@ function startGame() {
         animRequestId = null;
     }
     render();
+    if (aiFirstRadio.checked) {
+        game.switch_player();
+        const aiMove = game.ai_move();
+        game.make_move(aiMove[0], aiMove[1]);
+        const aiNow = performance.now();
+        recentMoves.push({ row: aiMove[0], col: aiMove[1], player: 2, time: aiNow });
+        lastMove = { row: aiMove[0], col: aiMove[1], player: 2, time: aiNow };
+        render();
+        const winner = game.check_winner();
+        if (winner === 2 || game.is_board_full()) {
+            endGame(winner === 2 ? 'AI wins' : 'Draw!');
+            return;
+        }
+        game.switch_player();
+    }
 }
 
 canvas.addEventListener('click', (e) => {
