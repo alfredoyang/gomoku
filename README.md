@@ -1,5 +1,7 @@
 # Gomoku Game in Rust
 
+<img src="./gomoku.png" width="400"/>
+
 This repository contains a simple console implementation of the Gomoku board game in Rust along with a lightweight WebGL interface for playing in the browser.
 
 ## Features
