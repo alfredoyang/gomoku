@@ -21,6 +21,14 @@
             flex-direction: column;
             align-items: center;
         }
+        #controls {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        #controls label {
+            margin-right: 10px;
+        }
         canvas { border: 1px solid #333; margin-bottom: 10px; }
         #message {
             margin-left: 20px;
@@ -33,7 +41,11 @@
 <div id="container">
     <div id="board-area">
         <canvas id="board" width="600" height="600"></canvas>
-        <button id="startButton">Start</button>
+        <div id="controls">
+            <label><input type="radio" id="playerFirst" name="starter" value="player" checked> You First</label>
+            <label><input type="radio" id="aiFirst" name="starter" value="ai"> AI First</label>
+            <button id="startButton">Start</button>
+        </div>
     </div>
     <div id="message"></div>
 </div>
