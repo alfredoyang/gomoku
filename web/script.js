@@ -54,9 +54,12 @@ const colorUniform = gl.getUniformLocation(shaderProgram, 'uColor');
 gl.useProgram(shaderProgram);
 gl.enableVertexAttribArray(coord);
 
+const BOARD_SCALE = 0.95; // keep some margin around the board so stones at
+                         // the edge aren't clipped
+
 function ndcFromBoard(row, col) {
-    const x = -1 + (col / (BOARD_SIZE - 1)) * 2;
-    const y = 1 - (row / (BOARD_SIZE - 1)) * 2;
+    const x = -BOARD_SCALE + (col / (BOARD_SIZE - 1)) * 2 * BOARD_SCALE;
+    const y = BOARD_SCALE - (row / (BOARD_SIZE - 1)) * 2 * BOARD_SCALE;
     return [x, y];
 }
 
@@ -93,7 +96,7 @@ function circleVertices(x, y, radius) {
 
 function drawStone(row, col, player) {
     const [x, y] = ndcFromBoard(row, col);
-    const verts = circleVertices(x, y, 2 / BOARD_SIZE * 0.4);
+    const verts = circleVertices(x, y, (2 * BOARD_SCALE / BOARD_SIZE) * 0.4);
     const buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
