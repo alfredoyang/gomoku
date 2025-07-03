@@ -3,12 +3,23 @@ import init, { WasmGomoku, board_size } from '../pkg/gomoku.js';
 let BOARD_SIZE;
 
 const canvas = document.getElementById('board');
+const startButton = document.getElementById('startButton');
+const messageDiv = document.getElementById('message');
+
 const gl = canvas.getContext('webgl');
 if (!gl) {
     alert('WebGL not supported');
 }
 
 let game;
+let gameOver = false;
+
+function endGame(msg) {
+    messageDiv.textContent = msg;
+    gameOver = true;
+    startButton.disabled = false;
+    startButton.textContent = 'Restart';
+}
 
 // Basic shaders for 2D rendering
 const vertCode = `
@@ -121,7 +132,16 @@ function render() {
     }
 }
 
+function startGame() {
+    game = new WasmGomoku();
+    gameOver = false;
+    messageDiv.textContent = '';
+    startButton.disabled = true; // disable startButton when game is started.
+    render();
+}
+
 canvas.addEventListener('click', (e) => {
+    if (gameOver || !game) return;
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -129,28 +149,24 @@ canvas.addEventListener('click', (e) => {
     const row = Math.floor(y / (canvas.height / BOARD_SIZE));
     if (!game.make_move(row, col)) return;
     render();
-    if (game.check_winner() === 1) {
-        alert('You win!');
-        return;
-    }
-    if (game.is_board_full()) {
-        alert('Draw!');
+    let winner = game.check_winner();
+    if (winner === 1 || game.is_board_full()) { // combine this 'if' and following 'if' into one. because both contents of 'if' are similiar.
+        endGame(winner === 1 ? 'You win!' : 'Draw!');
         return;
     }
     game.switch_player();
     const aiMove = game.ai_move();
     game.make_move(aiMove[0], aiMove[1]);
     render();
-    if (game.check_winner() === 2) {
-        alert('AI wins');
-        return;
-    }
-    if (game.is_board_full()) {
-        alert('Draw!');
+    winner = game.check_winner();
+    if (winner === 2 || game.is_board_full()) { // combine this 'if' and following 'if' into one. because both contents of 'if' are similiar.
+        endGame(winner === 2 ? 'AI wins' : 'Draw!');
         return;
     }
     game.switch_player();
 });
+
+startButton.addEventListener('click', startGame);
 
 init().then(() => {
     BOARD_SIZE = board_size();
