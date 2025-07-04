@@ -7,7 +7,7 @@ This repository contains a simple console implementation of the Gomoku board gam
 ## Features
 
 - **Console Interface**: Text-based gameplay with a clear board display.
-- **Human vs. AI**: Play as Black (X) against an AI as White (O).
+- **Human vs. AI**: Choose whether the AI plays Black or White.
 - **Minimax AI**: AI uses Minimax with alpha-beta pruning (depth 3) for strategic moves.
 - **Win/Draw Detection**: Detects wins (five in a row) or draws (full board).
 - **Input Validation**: Ensures valid moves with error messages for invalid inputs.
@@ -29,6 +29,9 @@ This repository contains a simple console implementation of the Gomoku board gam
    ```bash
    cargo run
    ```
+   The program will ask if you want to move first. Moving first means you
+   play Black (X); otherwise the AI takes the Black stones and you play
+   White (O).
 3. Build the WebGL interface using [wasm-pack](https://rustwasm.github.io/wasm-pack/):
    ```bash
    wasm-pack build --target web

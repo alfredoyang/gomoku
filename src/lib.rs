@@ -163,12 +163,14 @@ impl Gomoku {
         moves
     }
 
-    /// Heuristic evaluation of the board from White's perspective.
+    /// Heuristic evaluation of the board from the given player's
+    /// perspective.
     ///
-    /// Positive scores favor White while negative scores favor Black.
-    /// The function looks for runs of stones with open ends and assigns
-    /// increasingly large scores as sequences grow longer.
-    fn evaluate(&self) -> i32 {
+    /// Positive scores favour the supplied player while negative scores
+    /// favour the opponent. The function looks for runs of stones with
+    /// open ends and assigns increasingly large scores as sequences grow
+    /// longer.
+    fn evaluate(&self, perspective: Cell) -> i32 {
         let mut score = 0;
         let directions = [(0, 1), (1, 0), (1, 1), (1, -1)];
 
@@ -178,7 +180,7 @@ impl Gomoku {
                     continue;
                 }
                 let player = self.board[row][col];
-                let player_score = if player == Cell::White { 1 } else { -1 };
+                let player_score = if player == perspective { 1 } else { -1 };
 
                 for &(dr, dc) in directions.iter() {
                     let mut count = 1;
@@ -237,34 +239,36 @@ impl Gomoku {
     ///
     /// * `depth` limits the recursive search depth.
     /// * `alpha` and `beta` are the current bounds for pruning.
-    /// * `maximizing` indicates whether the AI (White) or the opponent
-    ///   (Black) is to play.
+    /// * `player` indicates whose turn it is at this node.
+    /// * `ai_player` is the color the AI is playing.
     fn minimax(
         &self,
         depth: i32,
         alpha: i32,
         beta: i32,
-        maximizing: bool,
+        player: Cell,
+        ai_player: Cell,
     ) -> (i32, Option<(usize, usize)>) {
         if depth == 0 || self.check_winner().is_some() || self.is_board_full() {
-            return (self.evaluate(), None);
+            return (self.evaluate(ai_player), None);
         }
 
         let valid_moves = self.get_valid_moves();
         if valid_moves.is_empty() {
-            return (self.evaluate(), None);
+            return (self.evaluate(ai_player), None);
         }
 
         let mut best_move = None;
         let mut alpha = alpha;
         let mut beta = beta;
 
+        let maximizing = player == ai_player;
         if maximizing {
             let mut max_eval = i32::MIN;
             for &(row, col) in valid_moves.iter() {
                 let mut new_game = self.clone();
-                new_game.board[row][col] = Cell::White;
-                let (eval, _) = new_game.minimax(depth - 1, alpha, beta, false);
+                new_game.board[row][col] = player;
+                let (eval, _) = new_game.minimax(depth - 1, alpha, beta, match player { Cell::White => Cell::Black, Cell::Black => Cell::White, Cell::Empty => Cell::Empty }, ai_player);
                 if eval > max_eval {
                     max_eval = eval;
                     best_move = Some((row, col));
@@ -279,8 +283,8 @@ impl Gomoku {
             let mut min_eval = i32::MAX;
             for &(row, col) in valid_moves.iter() {
                 let mut new_game = self.clone();
-                new_game.board[row][col] = Cell::Black;
-                let (eval, _) = new_game.minimax(depth - 1, alpha, beta, true);
+                new_game.board[row][col] = player;
+                let (eval, _) = new_game.minimax(depth - 1, alpha, beta, match player { Cell::White => Cell::Black, Cell::Black => Cell::White, Cell::Empty => Cell::Empty }, ai_player);
                 if eval < min_eval {
                     min_eval = eval;
                     best_move = Some((row, col));
@@ -300,8 +304,9 @@ impl Gomoku {
     /// found (which should not happen in normal play) the center of the
     /// board is returned as a fallback.
     pub fn ai_move(&mut self) -> (usize, usize) {
-        let (_, best_move) = self.minimax(MAX_DEPTH, i32::MIN, i32::MAX, true);
-        best_move.unwrap_or((7, 7)) // Default to center if no move found
+        let player = self.current_player;
+        let (_, best_move) = self.minimax(MAX_DEPTH, i32::MIN, i32::MAX, player, player);
+        best_move.unwrap_or((BOARD_SIZE / 2, BOARD_SIZE / 2)) // Default to center if no move found
     }
 }
 
@@ -447,5 +452,37 @@ mod tests {
             }
         }
         assert!(game.is_board_full());
+    }
+
+    #[test]
+    /// Scores should favor the supplied player.
+    fn evaluation_respects_perspective() {
+        let mut game = Gomoku::new();
+        game.board[7][5] = Cell::White;
+        game.board[7][6] = Cell::White;
+
+        let white_score = game.evaluate(Cell::White);
+        let black_score = game.evaluate(Cell::Black);
+        assert!(white_score > 0);
+        assert_eq!(white_score, -black_score);
+    }
+
+    #[test]
+    /// Winning evaluations should outrank non-winning positions.
+    fn win_scores_highest() {
+        let mut four = Gomoku::new();
+        for col in 0..4 {
+            four.board[0][col] = Cell::Black;
+        }
+        let four_score = four.evaluate(Cell::Black);
+
+        let mut five = Gomoku::new();
+        for col in 0..5 {
+            five.board[0][col] = Cell::Black;
+        }
+        let win_score = five.evaluate(Cell::Black);
+
+        assert!(win_score > four_score);
+        assert!(win_score >= 100000);
     }
 }
