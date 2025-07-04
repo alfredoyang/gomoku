@@ -1,9 +1,9 @@
 use std::cmp::{max, min};
 
 #[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
-#[cfg(target_arch = "wasm32")]
 use js_sys;
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen::prelude::*;
 
 pub const BOARD_SIZE: usize = 15;
 pub const WIN_LENGTH: usize = 5;
@@ -268,7 +268,17 @@ impl Gomoku {
             for &(row, col) in valid_moves.iter() {
                 let mut new_game = self.clone();
                 new_game.board[row][col] = player;
-                let (eval, _) = new_game.minimax(depth - 1, alpha, beta, match player { Cell::White => Cell::Black, Cell::Black => Cell::White, Cell::Empty => Cell::Empty }, ai_player);
+                let (eval, _) = new_game.minimax(
+                    depth - 1,
+                    alpha,
+                    beta,
+                    match player {
+                        Cell::White => Cell::Black,
+                        Cell::Black => Cell::White,
+                        Cell::Empty => Cell::Empty,
+                    },
+                    ai_player,
+                );
                 if eval > max_eval {
                     max_eval = eval;
                     best_move = Some((row, col));
@@ -284,7 +294,17 @@ impl Gomoku {
             for &(row, col) in valid_moves.iter() {
                 let mut new_game = self.clone();
                 new_game.board[row][col] = player;
-                let (eval, _) = new_game.minimax(depth - 1, alpha, beta, match player { Cell::White => Cell::Black, Cell::Black => Cell::White, Cell::Empty => Cell::Empty }, ai_player);
+                let (eval, _) = new_game.minimax(
+                    depth - 1,
+                    alpha,
+                    beta,
+                    match player {
+                        Cell::White => Cell::Black,
+                        Cell::Black => Cell::White,
+                        Cell::Empty => Cell::Empty,
+                    },
+                    ai_player,
+                );
                 if eval < min_eval {
                     min_eval = eval;
                     best_move = Some((row, col));
@@ -322,7 +342,9 @@ impl WasmGomoku {
     #[wasm_bindgen(constructor)]
     /// Create a new `WasmGomoku` wrapping the core game logic.
     pub fn new() -> WasmGomoku {
-        WasmGomoku { inner: Gomoku::new() }
+        WasmGomoku {
+            inner: Gomoku::new(),
+        }
     }
 
     /// Flatten the internal board to a simple array for JavaScript.
@@ -381,8 +403,6 @@ impl WasmGomoku {
         self.inner.switch_player();
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -484,5 +504,59 @@ mod tests {
 
         assert!(win_score > four_score);
         assert!(win_score >= 100000);
+    }
+
+    #[test]
+    /// AI should select the immediate winning move when available.
+    fn ai_makes_winning_move() {
+        let mut game = Gomoku::new();
+        for col in 0..4 {
+            game.board[0][col] = Cell::Black;
+        }
+
+        let (row, col) = game.ai_move();
+        assert_eq!((row, col), (0, 4));
+    }
+
+    #[test]
+    /// Evaluations must account for diagonal lines of stones.
+    fn evaluate_diagonal_sequences() {
+        let mut game = Gomoku::new();
+        for i in 0..3 {
+            game.board[3 + i][3 + i] = Cell::Black;
+        }
+
+        let black_score = game.evaluate(Cell::Black);
+        let white_score = game.evaluate(Cell::White);
+        let (row, col) = game.ai_move();
+
+        assert!(
+            (row, col) == (7, 7) || (row, col) == (2, 2),
+            "Expected (row, col) to be (7, 7) or (2, 2), but got {:?}",
+            (row, col)
+        );
+        assert!(black_score > 0);
+        assert_eq!(black_score, -white_score);
+        assert_eq!(black_score, 300);
+    }
+
+    #[test]
+    /// Confirm counter diagonal sequences are detected as wins.
+    fn detect_counter_diagonal_win() {
+        let mut game = Gomoku::new();
+        for i in 0..WIN_LENGTH {
+            game.make_move(i, WIN_LENGTH - 1 - i).unwrap();
+        }
+        assert_eq!(game.check_winner(), Some(Cell::Black));
+    }
+
+    #[test]
+    /// Confirm vertical sequences are detected as wins.
+    fn detect_vertical_win() {
+        let mut game = Gomoku::new();
+        for row in 0..WIN_LENGTH {
+            game.make_move(row, 0).unwrap();
+        }
+        assert_eq!(game.check_winner(), Some(Cell::Black));
     }
 }
