@@ -221,7 +221,6 @@ function startGame() {
     }
     render();
     if (aiFirstRadio.checked) {
-        game.switch_player();
         const aiMove = game.ai_move();
         game.make_move(aiMove[0], aiMove[1]);
         const aiNow = performance.now();
