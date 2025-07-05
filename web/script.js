@@ -5,6 +5,7 @@ let BOARD_SIZE;
 const canvas = document.getElementById('board');
 const startButton = document.getElementById('startButton');
 const messageDiv = document.getElementById('message');
+const infoDiv = document.getElementById('info');
 const playerFirstRadio = document.getElementById('playerFirst');
 const aiFirstRadio = document.getElementById('aiFirst');
 
@@ -18,6 +19,7 @@ let gameOver = false;
 let recentMoves = [];
 let animRequestId = null;
 let lastMove = null;
+let currentBoard = [];
 
 const FADE_DURATION = 1000; // ms
 const HIGHLIGHT_DURATION = 2000; // ms
@@ -166,6 +168,7 @@ function render() {
     gl.clear(gl.COLOR_BUFFER_BIT);
     drawGrid();
     const b = boardMatrix();
+    currentBoard = b;
     const now = performance.now();
     let needAnim = false;
     const newRecent = [];
@@ -212,6 +215,7 @@ function startGame() {
     game = new WasmGomoku();
     gameOver = false;
     messageDiv.textContent = '';
+    infoDiv.textContent = '';
     startButton.disabled = true; // disable startButton when game is started.
     recentMoves = [];
     lastMove = null;
@@ -266,6 +270,25 @@ canvas.addEventListener('click', (e) => {
         return;
     }
     game.switch_player();
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!game) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const col = Math.floor(x / (canvas.width / BOARD_SIZE));
+    const row = Math.floor(y / (canvas.height / BOARD_SIZE));
+    if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
+        infoDiv.textContent = '';
+        return;
+    }
+    const val = game.evaluation_at(row, col);
+    if (val === undefined || currentBoard[row][col] !== 0) {
+        infoDiv.textContent = `(${row}, ${col}): N/A`;
+    } else {
+        infoDiv.textContent = `(${row}, ${col}): ${val}`;
+    }
 });
 
 startButton.addEventListener('click', startGame);

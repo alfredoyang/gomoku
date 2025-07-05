@@ -26,10 +26,18 @@ pub enum Cell {
     White,
 }
 
+#[derive(Clone, Copy)]
+pub struct MoveEval {
+    pub row: usize,
+    pub col: usize,
+    pub value: i32,
+}
+
 #[derive(Clone)]
 pub struct Gomoku {
     board: [[Cell; BOARD_SIZE]; BOARD_SIZE],
     current_player: Cell,
+    last_evaluations: Vec<MoveEval>,
 }
 
 impl Gomoku {
@@ -38,6 +46,7 @@ impl Gomoku {
         Gomoku {
             board: [[Cell::Empty; BOARD_SIZE]; BOARD_SIZE],
             current_player: Cell::Black,
+            last_evaluations: Vec::new(),
         }
     }
 
@@ -325,8 +334,42 @@ impl Gomoku {
     /// board is returned as a fallback.
     pub fn ai_move(&mut self) -> (usize, usize) {
         let player = self.current_player;
-        let (_, best_move) = self.minimax(MAX_DEPTH, i32::MIN, i32::MAX, player, player);
-        best_move.unwrap_or((BOARD_SIZE / 2, BOARD_SIZE / 2)) // Default to center if no move found
+        let valid_moves = self.get_valid_moves();
+        self.last_evaluations.clear();
+
+        let mut best_eval = i32::MIN;
+        let mut best_move = None;
+
+        for &(row, col) in valid_moves.iter() {
+            let mut new_game = self.clone();
+            new_game.board[row][col] = player;
+            let (eval, _) = new_game.minimax(
+                MAX_DEPTH - 1,
+                i32::MIN,
+                i32::MAX,
+                match player {
+                    Cell::White => Cell::Black,
+                    Cell::Black => Cell::White,
+                    Cell::Empty => Cell::Empty,
+                },
+                player,
+            );
+            self.last_evaluations.push(MoveEval { row, col, value: eval });
+            if eval > best_eval {
+                best_eval = eval;
+                best_move = Some((row, col));
+            }
+        }
+
+        best_move.unwrap_or((BOARD_SIZE / 2, BOARD_SIZE / 2))
+    }
+
+    /// Retrieve the evaluation for a specific board position from the last AI search.
+    pub fn evaluation_at(&self, row: usize, col: usize) -> Option<i32> {
+        self.last_evaluations
+            .iter()
+            .find(|e| e.row == row && e.col == col)
+            .map(|e| e.value)
     }
 }
 
@@ -382,6 +425,11 @@ impl WasmGomoku {
         arr.push(&JsValue::from_f64(r as f64));
         arr.push(&JsValue::from_f64(c as f64));
         arr
+    }
+
+    /// Get the AI evaluation score for a given position from the last search.
+    pub fn evaluation_at(&self, row: usize, col: usize) -> Option<i32> {
+        self.inner.evaluation_at(row, col)
     }
 
     /// Translate the winner check into a numeric value for JavaScript.
