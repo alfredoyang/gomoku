@@ -30,6 +30,8 @@ function endGame(msg) {
     gameOver = true;
     startButton.disabled = false;
     startButton.textContent = 'Restart';
+    playerFirstRadio.disabled = false;
+    aiFirstRadio.disabled = false;
 }
 
 // Basic shaders for 2D rendering
@@ -217,6 +219,8 @@ function startGame() {
     messageDiv.textContent = '';
     infoDiv.textContent = '';
     startButton.disabled = true; // disable startButton when game is started.
+    playerFirstRadio.disabled = true;
+    aiFirstRadio.disabled = true;
     recentMoves = [];
     lastMove = null;
     if (animRequestId) {
