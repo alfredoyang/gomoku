@@ -37,9 +37,10 @@ This repository contains a simple console implementation of the Gomoku board gam
    wasm-pack build --target web
    ```
    This compiles the Rust game logic to WebAssembly and writes bindings in the `pkg/` directory.
-4. Serve the `web/` folder with any static file server, e.g. on Linux:
+4. Serve the project root with any static file server so browser requests resolve
+   resources correctly (serving only `web/` will result in missing files), e.g. on
+   Linux:
    ```bash
-   cd web
    python3 -m http.server 8000
    ```
-   Then open `http://localhost:8000` in your browser to play.
+   Then open `http://localhost:8000/web/` in your browser to play.
